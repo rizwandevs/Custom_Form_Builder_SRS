@@ -1,0 +1,88 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  name         String?
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  avatar       String?
+  role         String   @default("admin")
+  createdAt    DateTime @default(now()) @map("created_at")
+  forms        Form[]
+  revokedTokens RevokedToken[]
+
+  @@map("users")
+}
+
+model RevokedToken {
+  id        Int      @id @default(autoincrement())
+  jti       String   @unique
+  userId    Int      @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("revoked_tokens")
+}
+
+model Form {
+  id          Int      @id @default(autoincrement())
+  title       String
+  slug        String   @unique
+  description String?  @db.Text
+  status      String   @default("draft")
+  settings    Json?
+  createdById Int      @map("created_by_id")
+  createdBy   User     @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  fields      FormField[]
+  submissions FormSubmission[]
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("forms")
+}
+
+model FormField {
+  id         Int     @id @default(autoincrement())
+  formId     Int     @map("form_id")
+  form       Form    @relation(fields: [formId], references: [id], onDelete: Cascade)
+  type       String
+  label      String
+  name       String
+  order      Int     @map("field_order")
+  required   Boolean @default(false)
+  options    Json?
+  validation Json?
+  settings   Json?
+
+  @@map("form_fields")
+}
+
+model FormSubmission {
+  id        Int      @id @default(autoincrement())
+  formId    Int      @map("form_id")
+  form      Form     @relation(fields: [formId], references: [id], onDelete: Cascade)
+  values    SubmissionValue[]
+  ipAddress String?  @map("ip_address")
+  userAgent String?  @map("user_agent") @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("form_submissions")
+}
+
+model SubmissionValue {
+  id           Int            @id @default(autoincrement())
+  submissionId Int            @map("submission_id")
+  submission   FormSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  fieldName    String         @map("field_name")
+  value        String         @db.Text
+
+  @@map("submission_values")
+}
